@@ -1,0 +1,97 @@
+<html>
+  <head>
+
+    <style>
+      html, body {
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+      }
+    </style>
+
+  </head>
+  <body>
+    <script src="raphael-min.js" type="text/javascript" ></script>
+
+
+    <script>
+      function buildSkeletonRects(paper, splits) {
+        var rects = [];
+
+        function newRect(x, y, w, h) {
+          var rect = paper.rect(x,y,w,h);
+          rect.attr('stroke-width', '2.2px');
+
+          rects.push(rect);
+
+          return rect;
+        }
+
+        var rect = newRect(0, 0, paper.width, paper.height);
+
+        for (var i = 0; i < splits; i++) {
+          var rand_idx = parseInt(Math.random() * rects.length, 10);
+          cur_rect = rects[rand_idx];
+
+          var x = cur_rect.attr('x'),
+              y = cur_rect.attr('y'),
+              w = cur_rect.attr('width'),
+              h = cur_rect.attr('height');
+
+          var w_factor = parseInt(Math.log(w * w), 10);
+          var h_factor = parseInt(Math.log(h * h), 10);
+
+          new_w = w / 2; // default to splitting in half
+          new_h = h / 2; // default to splitting in half
+
+          // And then split the log of the square
+          if (Math.random() > 0.5) {
+            var new_w = (w / w_factor);
+          } else {
+            var new_h = (h / h_factor);
+          }
+
+          var new_rect = newRect(x + new_w, y + new_h, w - new_w, h - new_h);
+          var old_rect = newRect(x, y, new_w, new_h);
+
+          // Setup the rectangle hierarchy
+          new_rect.parent = old_rect.parent = cur_rect;
+
+          if (!cur_rect.children) {
+            cur_rect.children = [];
+          }
+
+          cur_rect.children.push(new_rect);
+          cur_rect.children.push(old_rect);
+        }
+
+        return rects;
+      }
+    </script>
+
+    <script>
+      function paintRects(rects) {
+        return rects;
+      }
+
+      function textureRects(rects) {
+        return rects;
+      }
+
+      function explodeRects(rects) {
+        return rects;
+      }
+    </script>
+
+    <script>
+      var w = screen.availWidth, h = screen.availHeight;
+      var splits = 10;
+      var paper = Raphael(0, 0, w, h);
+
+      var skeleton_rects = buildSkeletonRects(paper, splits);
+      var exploded_rects = explodeRects(skeleton-rects);
+      var painted_rects = paintRects(exploded_rects);
+      var textured_rects = textureRects(painted_rects);
+    </script>
+  </body>
+</html>
