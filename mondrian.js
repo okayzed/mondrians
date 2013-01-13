@@ -218,10 +218,6 @@
           w = cur_rect.attr('width'),
           h = cur_rect.attr('height');
 
-      if (w < min_side_size || h < min_side_size) {
-        continue;
-      }
-
       var w_factor = parseInt(Math.log(Math.random() * w * w * w), 10);
       var h_factor = parseInt(Math.log(Math.random() * h * h * h), 10);
 
@@ -235,11 +231,11 @@
         var new_h = parseInt(h / h_factor, 10);
       }
 
-      if (h - new_h < min_side_size || h < min_side_size) {
+      if (h - new_h < min_side_size || new_h < min_side_size) {
         continue;
       }
 
-      if (w - new_w < min_side_size || w < min_side_size) {
+      if (w - new_w < min_side_size || new_w < min_side_size) {
         continue;
       }
 
