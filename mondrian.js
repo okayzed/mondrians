@@ -63,7 +63,10 @@
     '#FCD838'
   ];
 
-
+  function raise(rect) {
+    // raise the rect to top of stack
+    rect.node.parentNode.appendChild(rect.node);
+  }
 
   function colorRectP(rect, gradient, palette) {
     var color_str = randomChoice(palette);
@@ -80,8 +83,7 @@
       rect.attr('fill', color_str);
     }
 
-    // raise the rect to top of stack
-    rect.node.parentNode.appendChild(rect.node);
+    raise(rect);
   }
 
   function colorRect(rect, gradient, boogie) {
@@ -294,8 +296,8 @@
     var b = getBox(r),x=b[0],y=b[1],w=b[2],h=b[3];
     var w_pieces = parseInt(w / piece_size, 10);
     var h_pieces = parseInt(h / piece_size, 10);
-    var w_piece_size = w / w_pieces;
-    var h_piece_size = h / h_pieces;
+    var w_piece_size = parseInt(w / w_pieces, 10);
+    var h_piece_size = parseInt(h / h_pieces, 10);
 
 
     if (w_pieces >= 3 && h_pieces >= 3) {
@@ -312,9 +314,10 @@
         var rect = newRect(
           (i * w_piece_size) + x,
           (j * h_piece_size) + y,
-          Math.max(w_piece_size + 1, w - ((i+1) * w_piece_size + 1)),
-          Math.max(h_piece_size + 1, h - ((j+1) * h_piece_size + 1)));
+          Math.min(w_piece_size, w - (i * w_piece_size)) + 1,
+          Math.min(w_piece_size, h - (j * h_piece_size)) + 1);
 
+        rect.explode = true;
         colorRect(rect, false, boogie);
         rect.attr('stroke-width', '0px');
       }
@@ -322,7 +325,7 @@
 
     // Make it so that the exploded rect still has an outline by
     // putting the exploded rect above all its children
-    r.node.parentNode.appendChild(r.node);
+    raise(r);
 
 
   }
@@ -454,18 +457,21 @@
     rects.sort(function() { return Math.random() > 0.5; });
     var ret = [];
     var newRect = newRectFactory(paper, ret, false);
+
     function paveBoardwalk(boardwalk_size, x, y, w, h) {
       x = rounded(x, boardwalk_size * 2);
       y = rounded(y, boardwalk_size * 2);
 
       var r = newRect(x, y, w, h);
       explodeRect(r, boardwalk_size, newRect, true);
+      r.remove();
     }
 
     var boardwalk_size = 20;
     for (var i = 0; i < rects.length; i++) {
       var r = rects[i];
       var b = getBox(r),x=b[0],y=b[1],w=b[2],h=b[3];
+
       if (w > pw / 5) {
           paveBoardwalk(boardwalk_size, x, y, w, boardwalk_size);
           paveBoardwalk(boardwalk_size, x, y + h, w, boardwalk_size);
@@ -506,6 +512,28 @@
   }
 
 
+  function doTheBoogie(rects) {
+    var tile1 = randomChoice(rects);
+    var tile2 = randomChoice(rects);
+
+    var a = getBox(tile1),ax=a[0],ay=a[1],aw=a[2],ah=a[3];
+    var b = getBox(tile2),bx=b[0],by=b[1],bw=b[2],bh=b[3];
+
+    var duration = 5000;
+
+    tile1.animate({ x: bx, width: bw}, duration, "linear", function() {
+      tile1.animate({ y: by, height: bh}, duration, "linear");
+    });
+
+    tile2.animate({ x: ax, width: aw }, duration, "linear", function() {
+      tile2.animate({ y: ay, height: ah}, duration, "linear");
+    });
+
+    raise(tile1);
+    raise(tile2);
+
+  };
+
   function main() {
     var w = screen.availWidth, h = screen.availHeight;
 
@@ -523,6 +551,8 @@
 
       var booths = openBooths(paper, skeleton_rects, boardwalks);
       var boardwalks = paveBoardwalks(paper, skeleton_rects);
+
+      setInterval(function() { doTheBoogie(boardwalks) }, 1000);
 
       var stoplights = installStoplights(paper, grid);
 
