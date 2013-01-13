@@ -34,16 +34,36 @@
         var idx = parseInt(Math.random() * arr.length, 10);
         return arr[idx];
       }
-    </script>
 
-    <script>
-      function buildSkeletonRects(paper, splits) {
-        var rects = [];
+      var palette = [
+        '#FFFEE6',
+        '#FFFF00',
+        '#FF2600',
+        '#0101A3'
+      ];
 
-        var ids = 0;
+      function colorRect(rect, gradient) {
+        var color_str = randomChoice(palette);
+        var color = Raphael.color(color_str);
+
+        if (gradient) {
+          h_color = Raphael.hsl(color.h, color.s, color.l);
+          color.l += 0.1;
+          h_next_color = Raphael.hsl(color.h, color.s, color.l);
+
+          rect.attr('gradient', '90-' + h_color + '-' + h_next_color +
+            (Math.random() > 0.5 ? ':10' : ':70'));
+          rect.node.parentNode.appendChild(rect.node); // raise the rect to top of stack
+        } else {
+          rect.attr('fill', color_str);
+        }
+      }
+
+      var ids = 0;
+      function newRectFactory(paper, rects) {
         function newRect(x, y, w, h) {
           var rect = paper.rect(x,y,w,h);
-          rect.attr('stroke-width', '2.2px');
+          rect.attr('stroke-width', '3px');
           rect.attr("stroke-color", "#1F1A18");
           rect.__id = ids++;
 
@@ -52,6 +72,17 @@
           return rect;
         }
 
+        return newRect;
+      }
+    </script>
+
+    <script>
+      function buildSkeletonRects(paper, splits) {
+        var rects = [];
+        var newRect = newRectFactory(paper, rects);
+
+
+        var min_side_size = 30;
         var offset = 20;
         var rect = newRect(-offset, -offset,
           paper.width + offset, paper.height + offset);
@@ -66,6 +97,11 @@
               w = cur_rect.attr('width'),
               h = cur_rect.attr('height');
 
+          if (w < min_side_size || h < min_side_size) {
+            i--;
+            continue;
+          }
+
           var w_factor = parseInt(Math.log(w * w), 10);
           var h_factor = parseInt(Math.log(h * h), 10);
 
@@ -77,6 +113,16 @@
             var new_w = parseInt(w / w_factor, 10);
           } else {
             var new_h = parseInt(h / h_factor, 10);
+          }
+
+          if (h - new_h < min_side_size || h < min_side_size) {
+            i--;
+            continue;
+          }
+
+          if (w - new_w < min_side_size || w < min_side_size) {
+            i--;
+            continue;
           }
 
           var new_rect = newRect(x + new_w, y + new_h, w - new_w, h - new_h);
@@ -100,18 +146,6 @@
     <script>
       function paintRects(rects) {
         var paintability = 0.1;
-        var palette = [
-          '#FFFEE6',
-          '#FFFF00',
-          '#FF2600',
-          '#0101A3'
-        ];
-
-        function colorRect(rect) {
-          var color = randomChoice(palette);
-          rect.attr('fill', color);
-        }
-
         var paintable_rects = rects.filter(function(r) {
           return !r.children || !r.children.length;
         });
@@ -119,9 +153,7 @@
         for (var i = 0; i < paintable_rects.length; i++) {
           if (Math.random() < paintability) {
             var rect = paintable_rects[i];
-            console.log("Painting rect", rect.__id);
             colorRect(rect);
-            rect.node.parentNode.appendChild(rect.node); // raise the rect to top of stack
           }
         }
 
@@ -132,7 +164,55 @@
         return rects;
       }
 
-      function explodeRects(rects) {
+      function explodeRects(paper, rects) {
+        var explodability = 0.1;
+        var newRect = newRectFactory(paper, rects);
+        for (var i = 0; i < rects.length; i++) {
+          var r = rects[i];
+
+          var piece_size = 20;
+          var x = r.attr('x');
+          var y = r.attr('y');
+          var w = r.attr('width');
+          var h = r.attr('height');
+
+          if (Math.random() < explodability && !r.children &&
+              w * h > 400) {
+            var w_pieces = parseInt(w / piece_size, 10);
+            var h_pieces = parseInt(h / piece_size, 10);
+
+            if (w_pieces >= 3 && h_pieces >= 3) {
+              i--;
+              continue;
+            }
+
+
+            // Sometimes, we just wanna remove this rect. Sometimes we fill it
+            // in all the way
+
+            if (Math.random() < 0.33) {
+              r.remove();
+            } else if (Math.random() < 0.33) {
+              colorRect(r);
+            }
+
+            for (var i = 0; i < w_pieces; i++) {
+              for (var j = 0; j < h_pieces; j++) {
+                var rect = newRect(
+                  (i * piece_size) + x,
+                  (j * piece_size) + y,
+                  Math.min(piece_size, w - ((i+1) * piece_size)),
+                  Math.min(piece_size, h - ((j+1) * piece_size)));
+
+                colorRect(rect);
+              }
+            }
+
+            console.log("Exploding ", r.__id, " into ", h_pieces * w_pieces, "pieces");
+
+          }
+        }
+
         return rects;
       }
 
@@ -145,21 +225,19 @@
       var w = screen.availWidth, h = screen.availHeight;
       var splits = 10;
       var paper = Raphael(0, 0, w, h);
-      console.log(paper);
 
       var filters = document.getElementById('filters').children;
-      console.log(filters.length);
 
       while (filters.length > 0) {
-        console.log("ADDING FILTER", filters[0]);
         paper.defs.appendChild(filters[0]);
       };
 
       var skeleton_rects = buildSkeletonRects(paper, splits);
-      var exploded_rects = explodeRects(skeleton_rects);
-      var painted_rects = paintRects(exploded_rects);
+      var painted_rects = paintRects(skeleton_rects);
       var textured_rects = textureRects(painted_rects);
       var boardwalks = paveBoardwalks(skeleton_rects);
+
+      var exploded_rects = explodeRects(paper, skeleton_rects);
 
 
 
