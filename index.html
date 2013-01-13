@@ -23,7 +23,6 @@
       }
 
       var palette = [
-        '#FFFEE6',
         '#FFFF00',
         '#FF2600',
         '#0101A3'
@@ -41,6 +40,8 @@
           rect.attr('gradient', '90-' + h_color + '-' + h_next_color +
             (Math.random() > 0.5 ? ':10' : ':70'));
           rect.node.parentNode.appendChild(rect.node); // raise the rect to top of stack
+
+          if (rect.parent) { rect.parent.remove(); rect.parent = null; }
         } else {
           rect.attr('fill', color_str);
         }
@@ -69,7 +70,7 @@
         var newRect = newRectFactory(paper, rects);
 
 
-        var min_side_size = 30;
+        var min_side_size = 40;
         var offset = 20;
         var rect = newRect(-offset, -offset,
           paper.width + offset, paper.height + offset);
@@ -145,6 +146,12 @@
       }
 
       function textureRects(rects) {
+
+        for (var i = 0; i < rects.length; i++) {
+          if (rects[i].children) { continue; }
+          rects[i].blur();
+
+        }
         return rects;
       }
 
@@ -152,7 +159,6 @@
         var explodability = 0.1;
         var returned_rects = [];
         var newRect = newRectFactory(paper, returned_rects);
-        tries = 0;
         for (var i = 0; i < rects.length; i++) {
           var r = rects[i];
 
@@ -165,6 +171,8 @@
           if (Math.random() < explodability && !r.children && w * h > 400) {
             var w_pieces = parseInt(w / piece_size, 10);
             var h_pieces = parseInt(h / piece_size, 10);
+            w_piece_size = w / w_pieces;
+            h_piece_size = h / h_pieces;
 
             if (w_pieces >= 3 && h_pieces >= 3) {
               continue;
@@ -178,20 +186,25 @@
             for (var i = 0; i < w_pieces; i++) {
               for (var j = 0; j < h_pieces; j++) {
                 var rect = newRect(
-                  (i * piece_size) + x,
-                  (j * piece_size) + y,
-                  Math.min(piece_size, w - ((i+1) * piece_size)),
-                  Math.min(piece_size, h - ((j+1) * piece_size)));
+                  (i * w_piece_size) + x,
+                  (j * h_piece_size) + y,
+                  Math.max(w_piece_size + 1, w - ((i+1) * w_piece_size + 1)),
+                  Math.max(h_piece_size + 1, h - ((j+1) * h_piece_size + 1)));
 
                 colorRect(rect);
+                rect.attr('stroke-width', '0px');
               }
             }
+
+            r.attr("stroke-width", "3px");
+            // Make it so that the exploded rect still has an outline by
+            // putting the exploded rect above all its children
+            r.node.parentNode.appendChild(r.node); 
 
             console.log("Exploding ", r.__id, " into ", h_pieces * w_pieces, "pieces");
 
           }
 
-          tries = 0;
         }
 
         return returned_rects;
@@ -208,11 +221,13 @@
       var paper = Raphael(0, 0, w, h);
 
       var skeleton_rects = buildSkeletonRects(paper, splits);
+      var exploded_rects = explodeRects(paper, skeleton_rects);
+
       var painted_rects = paintRects(skeleton_rects);
-      var textured_rects = textureRects(painted_rects);
+//      var textured_rects = textureRects(painted_rects);
+
       var boardwalks = paveBoardwalks(skeleton_rects);
 
-      var exploded_rects = explodeRects(paper, skeleton_rects);
 
 
 
