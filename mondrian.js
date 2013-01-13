@@ -42,25 +42,25 @@
   }
 
   var booth_palette = [
-    '#FF2600',
+    '#FC2600',
     '#0101A3',
-    '#FFFF38',
+    '#FCD838',
     '#DADADA'
   ];
 
   var palette = [
-    '#FFFF00',
-    '#FF2600',
+    '#FCD800',
+    '#FC2600',
     '#0101A3'
   ];
 
   var boogie_palette = [
-    '#FFFF00',
     '#FF2600',
     '#0101A3',
-    '#FFFF38',
-    '#FFFF10',
-    '#FFFF20'
+    '#FCD800',
+    '#FCD810',
+    '#FCD820',
+    '#FCD838'
   ];
 
 
@@ -503,7 +503,7 @@
           rounded(y, boardwalk_size * 2),
           boardwalk_size + fuzzy(2, 1),
           boardwalk_size + fuzzy(2, 1));
-        circ.attr('fill', '#DADADA');
+        circ.attr('fill', '#DFDADA');
         circ.attr('stroke-width', '0px');
       }
     }
