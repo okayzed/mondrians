@@ -1,6 +1,7 @@
 (function() {
   "use strict";
 
+  var booth_size = 50;
   var Raphael = window.Raphael; // dependency
   function randomChoice(arr) {
     var idx = parseInt(Math.random() * arr.length, 10);
@@ -145,7 +146,6 @@
         newRect(cross_cuts[i], y, 20, h);
       } else {
         newRect(x, cross_cuts[i], w, 20);
-        console.log(x, cross_cuts[i], w, 20);
       }
 
     }
@@ -163,6 +163,24 @@
 
     crossCut(rect, fuzzy(splits, 2), false, rectPusher);
     crossCut(rect, fuzzy(splits, 2), true, rectPusher);
+
+    var x_axis = [];
+    var y_axis = [];
+    for (var i = 0; i < rects.length; i++) {
+      var b = rects[i];
+      var x=b[0],y=b[1],w=b[2],h=b[3];
+
+      x_axis.push(x);
+      x_axis.push(x + w);
+      y_axis.push(y);
+      y_axis.push(y + h);
+    }
+
+    x_axis.sort(function(a,b) { return a - b; });
+    y_axis.sort(function(a,b) { return a - b; });
+
+    rects.x_axis = x_axis;
+    rects.y_axis = y_axis;
 
     return rects;
 
@@ -365,10 +383,8 @@
       var booth = newRect(
         rounded(x + booth_offset_x, 20),
         rounded(y + booth_offset_y, 20),
-        rounded(booth_width, 20),
-        rounded(booth_height, 20));
-
-      r.attr("stroke-style", "3px");
+        rounded(booth_width, 40),
+        rounded(booth_height, 40));
 
       function fillBooth(booth, both) {
         var b = getBox(booth),x=b[0],y=b[1],w=b[2],h=b[3];
@@ -407,21 +423,8 @@
 
     }
 
-    var x_axis = [];
-    var y_axis = [];
-    for (var i = 0; i < grid.length; i++) {
-      var r = grid[i];
-      var booth_size = 50;
-      var b = getBox(r),x=b[0],y=b[1],w=b[2],h=b[3];
-
-      x_axis.push(x);
-      x_axis.push(x + w);
-
-      y_axis.push(y + h);
-    }
-
-    x_axis.sort(function(a,b) { return a - b; });
-    y_axis.sort(function(a,b) { return a - b; });
+    var x_axis = grid.x_axis;
+    var y_axis = grid.y_axis;
 
     var boothiness = 0.3;
     for (var i = 0; i < x_axis.length - 1; i++) {
@@ -430,7 +433,7 @@
       for (var j = 0; j < y_axis.length - 1; j++) {
         var y = y_axis[j], h = y_axis[j+1] - y_axis[j];
         if (Math.random() < boothiness) {
-          addBooth(x, y, w, h, flip(), booth_size);
+          addBooth(x, y, w, h, true, booth_size);
         }
       }
     }
@@ -463,9 +466,9 @@
       explodeRect(r, boardwalk_size, newRect, true);
     }
 
+    var boardwalk_size = 20;
     for (var i = 0; i < rects.length; i++) {
       var r = rects[i];
-      var boardwalk_size = 20;
       var b = getBox(r),x=b[0],y=b[1],w=b[2],h=b[3];
       if (w > pw / 5) {
           paveBoardwalk(boardwalk_size, x, y, w, boardwalk_size);
@@ -481,6 +484,31 @@
     return ret;
   }
 
+  function installStoplights(paper, grid) {
+    var x_axis = grid.x_axis, y_axis = grid.y_axis;
+    var boardwalk_size = 20;
+
+    for (var i = 0; i < x_axis.length - 1; i++) {
+      var x = x_axis[i], w = x_axis[i+1] - x_axis[i];
+
+      for (var j = 0; j < y_axis.length - 1; j++) {
+
+        if (flip()) {
+          continue;
+        }
+
+        var y = y_axis[j], h = y_axis[j+1] - y_axis[j];
+        var circ = paper.rect(
+          rounded(x, boardwalk_size * 2),
+          rounded(y, boardwalk_size * 2),
+          boardwalk_size + fuzzy(2, 1),
+          boardwalk_size + fuzzy(2, 1));
+        circ.attr('fill', '#DADADA');
+        circ.attr('stroke-width', '0px');
+      }
+    }
+  }
+
 
   function main() {
     var w = screen.availWidth, h = screen.availHeight;
@@ -490,16 +518,18 @@
     var min_splits = boogie ? 3 : 5;
     var splits = Math.random() * min_splits + min_splits;
 
-    console.log(paper.canvas);
 
     if (boogie) {
       var grid = buildGrid(paper, splits, boogie);
-      console.log(grid);
       var skeleton_rects = buildGridRects(paper, grid, boogie);
-
+      skeleton_rects.x_axis = grid.x_axis;
+      skeleton_rects.y_axis = grid.y_axis;
 
       var booths = openBooths(paper, skeleton_rects, boardwalks);
       var boardwalks = paveBoardwalks(paper, skeleton_rects);
+
+      var stoplights = installStoplights(paper, grid);
+
     } else {
       var skeleton_rects = buildSkeletonRects(paper, splits, boogie);
       var exploded_rects = explodeRects(paper, skeleton_rects);
