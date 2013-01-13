@@ -11,27 +11,55 @@
 
   </head>
   <body>
+
+    <!-- Filters     -->
+
+    <defs id="filters">
+      <filter id="gblur">
+         <feGaussianBlur stdDeviation="1" />
+      </filter>
+
+      <filter id="erode">
+        <feMorphology operator="erode" in="SourceGraphic" radius="3" />
+      </filter>
+    </defs>
+
+    <!--     Imports -->
+
+    <script src="canvg.js" type="text/javascript" ></script>
     <script src="raphael-min.js" type="text/javascript" ></script>
 
+    <script>
+      function randomChoice(arr) {
+        var idx = parseInt(Math.random() * arr.length, 10);
+        return arr[idx];
+      }
+    </script>
 
     <script>
       function buildSkeletonRects(paper, splits) {
         var rects = [];
 
+        var ids = 0;
         function newRect(x, y, w, h) {
           var rect = paper.rect(x,y,w,h);
           rect.attr('stroke-width', '2.2px');
+          rect.attr("stroke-color", "#1F1A18");
+          rect.__id = ids++;
+
 
           rects.push(rect);
-
           return rect;
         }
 
-        var rect = newRect(0, 0, paper.width, paper.height);
+        var offset = 20;
+        var rect = newRect(-offset, -offset,
+          paper.width + offset, paper.height + offset);
+        rect.attr('stroke-width', '0px');
 
         for (var i = 0; i < splits; i++) {
-          var rand_idx = parseInt(Math.random() * rects.length, 10);
-          cur_rect = rects[rand_idx];
+          var cur_rect = randomChoice(rects);
+          console.log("splitting", cur_rect.__id);
 
           var x = cur_rect.attr('x'),
               y = cur_rect.attr('y'),
@@ -41,14 +69,14 @@
           var w_factor = parseInt(Math.log(w * w), 10);
           var h_factor = parseInt(Math.log(h * h), 10);
 
-          new_w = w / 2; // default to splitting in half
-          new_h = h / 2; // default to splitting in half
+          new_w = parseInt(w / 2, 10); // default to splitting in half
+          new_h = parseInt(h / 2, 10); // default to splitting in half
 
           // And then split the log of the square
           if (Math.random() > 0.5) {
-            var new_w = (w / w_factor);
+            var new_w = parseInt(w / w_factor, 10);
           } else {
-            var new_h = (h / h_factor);
+            var new_h = parseInt(h / h_factor, 10);
           }
 
           var new_rect = newRect(x + new_w, y + new_h, w - new_w, h - new_h);
@@ -71,6 +99,32 @@
 
     <script>
       function paintRects(rects) {
+        var paintability = 0.1;
+        var palette = [
+          '#FFFEE6',
+          '#FFFF00',
+          '#FF2600',
+          '#0101A3'
+        ];
+
+        function colorRect(rect) {
+          var color = randomChoice(palette);
+          rect.attr('fill', color);
+        }
+
+        var paintable_rects = rects.filter(function(r) {
+          return !r.children || !r.children.length;
+        });
+
+        for (var i = 0; i < paintable_rects.length; i++) {
+          if (Math.random() < paintability) {
+            var rect = paintable_rects[i];
+            console.log("Painting rect", rect.__id);
+            colorRect(rect);
+            rect.node.parentNode.appendChild(rect.node); // raise the rect to top of stack
+          }
+        }
+
         return rects;
       }
 
@@ -81,17 +135,34 @@
       function explodeRects(rects) {
         return rects;
       }
+
+      function paveBoardwalks(rects) {
+        return rects;
+      }
     </script>
 
     <script>
       var w = screen.availWidth, h = screen.availHeight;
       var splits = 10;
       var paper = Raphael(0, 0, w, h);
+      console.log(paper);
+
+      var filters = document.getElementById('filters').children;
+      console.log(filters.length);
+
+      while (filters.length > 0) {
+        console.log("ADDING FILTER", filters[0]);
+        paper.defs.appendChild(filters[0]);
+      };
 
       var skeleton_rects = buildSkeletonRects(paper, splits);
-      var exploded_rects = explodeRects(skeleton-rects);
+      var exploded_rects = explodeRects(skeleton_rects);
       var painted_rects = paintRects(exploded_rects);
       var textured_rects = textureRects(painted_rects);
+      var boardwalks = paveBoardwalks(skeleton_rects);
+
+
+
     </script>
   </body>
 </html>
