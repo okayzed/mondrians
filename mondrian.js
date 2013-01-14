@@ -573,7 +573,7 @@
 
     function strollSomewhere(tile) {
       raise(tile);
-      colorRect(tile);
+      colorRect(tile, false, true /* boogie palette */);
 
       var path = [];
       var turns = fuzzy(5, 3);
@@ -628,6 +628,7 @@
       }
 
       var start = tile.clone();
+      pavement.push(start);
       takePath(tile, path, [start], function() {
         tile.remove();
       });
