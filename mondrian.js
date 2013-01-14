@@ -65,7 +65,9 @@
 
   function raise(rect) {
     // raise the rect to top of stack
-    rect.node.parentNode.appendChild(rect.node);
+    if (rect.node) {
+      rect.node.parentNode.appendChild(rect.node);
+    }
   }
 
   function colorRectP(rect, gradient, palette) {
@@ -327,7 +329,6 @@
     // putting the exploded rect above all its children
     raise(r);
 
-
   }
 
   function explodeRects(paper, rects) {
@@ -456,39 +457,60 @@
 
     rects.sort(function() { return Math.random() > 0.5; });
     var ret = [];
-    var newRect = newRectFactory(paper, ret, false);
 
     function paveBoardwalk(boardwalk_size, x, y, w, h) {
       x = rounded(x, boardwalk_size * 2);
       y = rounded(y, boardwalk_size * 2);
 
+      var tet = [];
+      var newRect = newRectFactory(paper, tet, false);
       var r = newRect(x, y, w, h);
+      tet.length = 0;
       explodeRect(r, boardwalk_size, newRect, true);
-      r.remove();
+
+      if (!r.pavement) { r.pavement = [] };
+      tet.forEach(function(rect) {
+        rect.boardwalk = r;
+
+        r.pavement.push(rect);
+        ret.push(rect);
+      });
+
+      r.attr('stroke-width', '0px');
+      r.attr('fille-style', 'none');
+
+      return r;
     }
 
     var boardwalk_size = 20;
+    var boardwalks = [], boardwalk;
     for (var i = 0; i < rects.length; i++) {
       var r = rects[i];
       var b = getBox(r),x=b[0],y=b[1],w=b[2],h=b[3];
 
+
       if (w > pw / 5) {
-          paveBoardwalk(boardwalk_size, x, y, w, boardwalk_size);
-          paveBoardwalk(boardwalk_size, x, y + h, w, boardwalk_size);
+          boardwalk = paveBoardwalk(boardwalk_size, x, y, w, boardwalk_size);
+          boardwalks.push(boardwalk);
+          boardwalk = paveBoardwalk(boardwalk_size, x, y + h, w, boardwalk_size);
+          boardwalks.push(boardwalk);
       }
 
       if (h > ph / 7) {
-        paveBoardwalk(boardwalk_size, x, y, boardwalk_size, h);
-        paveBoardwalk(boardwalk_size, x + w, y, boardwalk_size, h);
+        boardwalk = paveBoardwalk(boardwalk_size, x, y, boardwalk_size, h);
+        boardwalks.push(boardwalk);
+        boardwalk = paveBoardwalk(boardwalk_size, x + w, y, boardwalk_size, h);
+        boardwalks.push(boardwalk);
       }
     }
 
-    return ret;
+    return { boardwalks: boardwalks, pavement: ret };
   }
 
   function installStoplights(paper, grid) {
     var x_axis = grid.x_axis, y_axis = grid.y_axis;
     var boardwalk_size = 20;
+    var stoplights = [];
 
     for (var i = 0; i < x_axis.length - 1; i++) {
       var x = x_axis[i], w = x_axis[i+1] - x_axis[i];
@@ -503,41 +525,117 @@
         var circ = paper.rect(
           rounded(x, boardwalk_size * 2),
           rounded(y, boardwalk_size * 2),
-          boardwalk_size + fuzzy(2, 1),
-          boardwalk_size + fuzzy(2, 1));
+          boardwalk_size + 1,
+          boardwalk_size + 1);
         circ.attr('fill', '#DFDADA');
         circ.attr('stroke-width', '0px');
+
+        stoplights.push(circ);
       }
     }
+
+    return stoplights;
   }
 
+  function doTheBoogie(boardwalks, timeout) {
 
-  function doTheBoogie(rects, timeout) {
+    var pavement = boardwalks.pavement,
+        rects = boardwalks.stoplights;
 
     if (!_boogie) { return; }
 
-    var tile1 = randomChoice(rects);
-    var tile2 = randomChoice(rects);
-
-    var a = getBox(tile1),ax=a[0],ay=a[1],aw=a[2],ah=a[3];
-    var b = getBox(tile2),bx=b[0],by=b[1],bw=b[2],bh=b[3];
-
-    var duration = 5000;
-
-    tile1.animate({ x: bx, width: bw}, duration, "linear", function() {
-      tile1.animate({ y: by, height: bh}, duration, "linear");
-    });
-
-    tile2.animate({ x: ax, width: aw }, duration, "linear", function() {
-      tile2.animate({ y: ay, height: ah}, duration, "linear");
-    });
-
-    raise(tile1);
-    raise(tile2);
-
     setTimeout(function() {
-      doTheBoogie(rects, timeout);
+      doTheBoogie(boardwalks, timeout);
     }, timeout);
+
+    function findAdjacentStreet(tile, on_x) {
+      var street = tile;
+      var b = getBox(street),x1=b[0],y1=b[1],w1=b[2],h1=b[3];
+      var matches = [];
+
+      for (var i = 0; i < rects.length; i++) {
+        if (tile == rects[i]) { continue; }
+
+        b = getBox(rects[i]);
+        var x2=b[0],y2=b[1],w2=b[2],h2=b[3];
+
+        if (x1 == x2) {
+          matches.push(rects[i]);
+        }
+
+        if (y1 == y2) {
+          matches.push(rects[i]);
+        }
+      }
+
+      return randomChoice(matches);
+    }
+
+    function strollSomewhere(tile) {
+      raise(tile);
+      colorRect(tile);
+
+      var path = [];
+      var turns = fuzzy(5, 3);
+      var street = tile;
+      var next_street, prev_street;
+
+      while (turns) {
+        next_street = findAdjacentStreet(street, turns % 2);
+        if (!next_street) {
+          next_street = findAdjacentStreet(street, !(turns % 2));
+          if (!next_street) {
+            street = prev_street;
+            path.pop();
+            turns--;
+            continue;
+          }
+        } else {
+          path.push(next_street);
+          turns--;
+        }
+
+        prev_street = street;
+        street = next_street;
+      }
+
+      function takePath(tile, path, return_path, cb) {
+        if (path.length == 0) {
+          return;
+        }
+
+        if (path.length == 1) {
+          var dest = path.shift();
+          raise(dest);
+
+          if (cb) { cb(dest); }
+
+          return;
+        }
+
+        var dest = path.shift();
+        var options = {};
+
+        options.y = dest.attr('y');
+        options.x = dest.attr('x');
+
+        tile.animate(options, 1000, '<', function() {
+          if (return_path) { return_path.unshift(dest); }
+
+          // Find which way to go on this street
+          takePath(tile, path, return_path, cb);
+        });
+      }
+
+      var start = tile.clone();
+      takePath(tile, path, [start], function() {
+        tile.remove();
+      });
+      return path;
+    }
+
+    var tile1 = randomChoice(pavement);
+    if (tile1) { strollSomewhere(tile1); }
   };
 
   var _boogie;
@@ -553,15 +651,15 @@
     var min_splits = boogie ? 3 : 5;
     var splits = Math.random() * min_splits + min_splits;
 
-    var boogie_out = 30000;
+    var boogie_out = 3000;
     function discoBoogie() {
       _boogie = true;
-      doTheBoogie(boardwalks, 1000);
+      doTheBoogie(boardwalks, 200);
       setTimeout(function() {
         stopTheBoogie();
 
         setTimeout(function() {
-            discoBoogie(); 
+            discoBoogie();
           }, boogie_out);
 
       }, boogie_out);
@@ -577,7 +675,10 @@
       var boardwalks = paveBoardwalks(paper, skeleton_rects);
       var stoplights = installStoplights(paper, grid);
 
+      boardwalks.stoplights = stoplights;
+
       setTimeout(discoBoogie, boogie_out);
+
     } else {
       var skeleton_rects = buildSkeletonRects(paper, splits, boogie);
       var exploded_rects = explodeRects(paper, skeleton_rects);
