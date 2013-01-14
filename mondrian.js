@@ -315,7 +315,7 @@
           (i * w_piece_size) + x,
           (j * h_piece_size) + y,
           Math.min(w_piece_size, w - (i * w_piece_size)) + 1,
-          Math.min(w_piece_size, h - (j * h_piece_size)) + 1);
+          Math.min(h_piece_size, h - (j * h_piece_size)) + 1);
 
         rect.explode = true;
         colorRect(rect, false, boogie);
@@ -512,7 +512,10 @@
   }
 
 
-  function doTheBoogie(rects) {
+  function doTheBoogie(rects, timeout) {
+
+    if (!_boogie) { return; }
+
     var tile1 = randomChoice(rects);
     var tile2 = randomChoice(rects);
 
@@ -532,7 +535,15 @@
     raise(tile1);
     raise(tile2);
 
+    setTimeout(function() {
+      doTheBoogie(rects, timeout);
+    }, timeout);
   };
+
+  var _boogie;
+  function stopTheBoogie() {
+    _boogie = false;
+  }
 
   function main() {
     var w = screen.availWidth, h = screen.availHeight;
@@ -542,6 +553,19 @@
     var min_splits = boogie ? 3 : 5;
     var splits = Math.random() * min_splits + min_splits;
 
+    var boogie_out = 30000;
+    function discoBoogie() {
+      _boogie = true;
+      doTheBoogie(boardwalks, 1000);
+      setTimeout(function() {
+        stopTheBoogie();
+
+        setTimeout(function() {
+            discoBoogie(); 
+          }, boogie_out);
+
+      }, boogie_out);
+    };
 
     if (boogie) {
       var grid = buildGrid(paper, splits, boogie);
@@ -551,11 +575,9 @@
 
       var booths = openBooths(paper, skeleton_rects, boardwalks);
       var boardwalks = paveBoardwalks(paper, skeleton_rects);
-
-      setInterval(function() { doTheBoogie(boardwalks) }, 1000);
-
       var stoplights = installStoplights(paper, grid);
 
+      setTimeout(discoBoogie, boogie_out);
     } else {
       var skeleton_rects = buildSkeletonRects(paper, splits, boogie);
       var exploded_rects = explodeRects(paper, skeleton_rects);
