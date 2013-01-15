@@ -225,8 +225,8 @@
       var w_factor = parseInt(Math.log(Math.random() * w * w * w), 10);
       var h_factor = parseInt(Math.log(Math.random() * h * h * h), 10);
 
-      new_w = parseInt(w / 2, 10); // default to splitting in half
-      new_h = parseInt(h / 2, 10); // default to splitting in half
+      new_w = parseInt(w / fuzzy(5, 4), 10);
+      new_h = parseInt(h / fuzzy(5, 4), 10);
 
       // And then split the log of the square
       if (Math.random() > 0.5) {
@@ -245,6 +245,9 @@
 
       var new_rect = newRect(x + new_w, y + new_h, w - new_w, h - new_h);
       var old_rect = newRect(x, y, new_w, new_h);
+
+      new_rect.attr('stroke-width', '13px');
+      old_rect.attr('stroke-width', '13px');
 
       // Setup the rectangle hierarchy
       new_rect.parent = old_rect.parent = cur_rect;
