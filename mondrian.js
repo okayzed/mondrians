@@ -208,7 +208,7 @@
     var newRect = newRectFactory(paper, rects, !boogie);
 
 
-    var min_side_size = 40;
+    var min_side_size = fuzzy(40, 20);
     var offset = 30;
     var rect = newRect(-offset, -offset,
       paper.width + offset, paper.height + offset);
@@ -225,15 +225,24 @@
       var w_factor = parseInt(Math.log(Math.random() * w * w * w), 10);
       var h_factor = parseInt(Math.log(Math.random() * h * h * h), 10);
 
-      new_w = parseInt(w / fuzzy(5, 4), 10);
-      new_h = parseInt(h / fuzzy(5, 4), 10);
+      var new_w = parseInt(w / fuzzy(10, 9), 10);
+      var new_h = parseInt(h / fuzzy(10, 9), 10);
 
       // And then split the log of the square
       if (Math.random() > 0.5) {
-        var new_w = parseInt(w / w_factor, 10);
+        new_w = parseInt(w / w_factor, 10);
       } else {
-        var new_h = parseInt(h / h_factor, 10);
+        new_h = parseInt(h / h_factor, 10);
       }
+
+      if (flip()) {
+        new_w = w - new_w;
+      }
+
+      if (flip()) {
+        new_h = h - new_h;
+      }
+
 
       if (h - new_h < min_side_size || new_h < min_side_size) {
         continue;
@@ -314,13 +323,19 @@
     }
 
 
+    var remaining_h = h,
+        remaining_w = w;
     for (var i = 0; i < w_pieces; i++) {
+      remaining_w -= w_piece_size;
+      remaining_h = h;
       for (var j = 0; j < h_pieces; j++) {
+        remaining_h -= h_piece_size;
+
         var rect = newRect(
           (i * w_piece_size) + x,
           (j * h_piece_size) + y,
-          Math.min(w_piece_size, w - (i * w_piece_size)) + 1,
-          Math.min(h_piece_size, h - (j * h_piece_size)) + 1);
+          w_piece_size + (remaining_w < w_piece_size ? remaining_w : 0),
+          h_piece_size + (remaining_h < h_piece_size ? remaining_h : 0))
 
         rect.explode = true;
         colorRect(rect, false, boogie);
@@ -386,8 +401,8 @@
       var booth = newRect(
         rounded(x + booth_offset_x, 20),
         rounded(y + booth_offset_y, 20),
-        rounded(booth_width, 40),
-        rounded(booth_height, 40));
+        rounded(booth_width, 20),
+        rounded(booth_height + 10, 40));
 
       function fillBooth(booth, both) {
         var b = getBox(booth),x=b[0],y=b[1],w=b[2],h=b[3];
@@ -655,7 +670,7 @@
     var min_splits = boogie ? 3 : 5;
     var splits = Math.random() * min_splits + min_splits;
 
-    var boogie_out = 3000;
+    var boogie_out = 6500;
     function discoBoogie() {
       _boogie = true;
       doTheBoogie(boardwalks, 200);
