@@ -63,6 +63,19 @@
     '#FCD838'
   ];
 
+  var color_names = {
+    '#fcd800' : 'yellow',
+    '#fcd810' : 'yellow',
+    '#fcd820' : 'yellow',
+    '#fcd838' : 'yellow',
+    '#fc2600' : 'red',
+    '#0101a3' : 'blue',
+    '#dadada' : 'gray'
+  };
+
+
+
+
   function raise(rect) {
     // raise the rect to top of stack
     if (rect.node) {
@@ -70,9 +83,11 @@
     }
   }
 
+  var _used_colors = {};
   function colorRectP(rect, gradient, palette) {
     var color_str = randomChoice(palette);
     var color = Raphael.color(color_str);
+    _used_colors[color] = (_used_colors[color] || 0) + 1;
 
     if (gradient) {
       h_color = Raphael.hsl(color.h, color.s, color.l);
@@ -457,8 +472,8 @@
     }
   }
 
-  function flip() {
-    return sometimes() == - 1;
+  function flip(n) {
+    return sometimes(n) == 1;
   }
 
   function sometimes(n) {
@@ -466,6 +481,7 @@
     if (n > 1) {
       n = 1 / n;
     }
+
     return Math.random() < n ? 1 : -1;
   }
 
@@ -684,6 +700,7 @@
       }, boogie_out);
     };
 
+    var grid;
     if (boogie) {
       var grid = buildGrid(paper, splits, boogie);
       var skeleton_rects = buildGridRects(paper, grid, boogie);
@@ -699,11 +716,107 @@
       setTimeout(discoBoogie, boogie_out);
 
     } else {
-      var skeleton_rects = buildSkeletonRects(paper, splits, boogie);
+      var skeleton_rects = grid = buildSkeletonRects(paper, splits, boogie);
       var exploded_rects = explodeRects(paper, skeleton_rects);
       var painted_rects = paintRects(skeleton_rects);
 
     }
+
+    var composition_name = name_composition(boogie, grid.length);
+
+    function buildPlacard(label) {
+      var div = document.createElement('div');
+      div.className += 'placard';
+      div.innerHTML = label;
+
+      document.body.appendChild(div);
+    }
+
+    buildPlacard(composition_name);
+  }
+
+  // Let's name this composition based on how it was made
+  // splits
+  // colors
+  // tableau
+  // boogie | composition
+  // No. :digit:
+  // with :fruit:
+  function name_composition(boogie, splits) {
+    var name = '';
+    var fruits = [
+      "lemon", "melon", "grape"
+    ];
+
+    var suffix = '';
+    var prefix = '';
+
+    if (flip(10)) {
+      if (splits < 3) {
+        prefix = randomChoice(['Brief', 'Simple', 'Bare', 'Midnight', '', '']);
+      } else if (splits > 7) {
+        prefix = randomChoice(['Busy', 'Tight', '', '' ]);
+      }
+    }
+
+    function getColors() {
+        var colors = Object.keys(_used_colors).map(function(c) { return color_names[c] });
+        var color_dict = {};
+        for (var i = 0; i < colors.length; i++) {
+          color_dict[colors[i]] = true;
+        };
+
+        delete color_dict['undefined'];
+
+        colors = Object.keys(color_dict);
+
+        if (!colors.length) {
+          return '';
+        }
+
+        return ' ' + randomChoice(['with', 'in']) + ' ' + colors.slice(0, fuzzy(3, 2)).join(', ') + ' ';
+    }
+
+    function getDigit() {
+      var digit = fuzzy(3, 2, 15);
+      return '(' + randomChoice(['No.', 'Number']) + ' ' + digit + ')';
+
+    }
+
+    if (boogie) {
+      var street = randomChoice(["Victory", "Broadway", "Trafalgar", "St. Mark's place", "Union Square"]);
+      if (flip()) {
+        name += street + " Boogie";
+        if (flip(3)) {
+          name +=  "-Woogie";
+        }
+      } else {
+        name += "Boogie " + (flip(3) ? "Woogie" : "") + " " + randomChoice(["on", "in", "at"]) + " " + street;
+      }
+
+      if (flip(5)) {
+        suffix += ' ' + getDigit();
+      }
+
+
+    } else {
+      name += randomChoice(['Composition', 'Tableau']);
+      if (flip(2)) {
+        suffix += getColors();
+        if (flip(2)) {
+          suffix += ' ' + getDigit();
+        }
+      } else {
+        suffix += ' ' + getDigit();
+      }
+
+    }
+
+    var built = prefix + ' ' + name;
+    if (suffix) {
+      built += suffix;
+    }
+    return built.split(' ').join(' ');
   }
 
   window.ReMondrian = {
