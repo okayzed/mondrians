@@ -112,7 +112,8 @@
     function newRect(x, y, w, h) {
       var rect = paper.rect(x,y,w,h);
       if (!border) {
-        rect.attr('stroke-width', '0px');
+	rect.attr('stroke', 'none');
+        rect.attr('stroke-width', '0');
       } else {
         rect.attr('stroke-width', '3px');
       }
@@ -563,6 +564,7 @@
           boardwalk_size + 1);
         circ.attr('fill', '#DFDADA');
         circ.attr('stroke-width', '0px');
+	circ.attr('stroke', 'none');
 
         stoplights.push(circ);
       }
